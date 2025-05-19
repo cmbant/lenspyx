@@ -12,6 +12,7 @@ Welcome to lenspyx's documentation!
    :caption: Contents:
 
    lensing
+   qest
 
 Indices and tables
 ==================
