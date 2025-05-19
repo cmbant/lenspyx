@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lenspyx"
+dynamic = ["version"]
+description = "Curved-sky python lensed CMB maps simulation package"
+readme = "README.md"
+authors = [
+    {name = "Julien Carron", email = "to.jcarron@gmail.com"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.7"
+dependencies = [
+    "ducc0>=0.30.0",
+    "numpy",
+    "matplotlib",
+    "healpy",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Homepage = "https://github.com/cmbant/lenspyx"
+Documentation = "https://lenspyx.readthedocs.io/"
+"Bug Tracker" = "https://github.com/cmbant/lenspyx/issues"
+
+[tool.setuptools]
+packages = [
+    "lenspyx",
+    "lenspyx.remapping",
+    "lenspyx.tests",
+    "lenspyx.wigners",
+    "lenspyx.qest",
+    "lenspyx.fortran",
+    "lenspyx.shts",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "lenspyx._version.__version__"}
+
+[tool.setuptools.package-data]
+lenspyx = ["data/cls/*.dat"]
+
+[tool.pytest.ini_options]
+testpaths = ["lenspyx/tests"]
+python_files = "test_*.py"
