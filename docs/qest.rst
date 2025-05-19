@@ -26,19 +26,18 @@ Here's a basic example of how to use the quadratic estimator functionality:
     import numpy as np
     from lenspyx import synfast, get_geom
     from lenspyx.utils import get_ffp10_cls
-    from lenspyx.utils_hp import gauss_beam, almxfl, alm2cl, alm_copy
+    from lenspyx.utils_hp import gauss_beam, almxfl, alm2cl, alm_copy, synalm
     from lenspyx.qest.qest import Qlms, OpFilt
 
     # Parameters
     lmax_unl = 3000  # Maximum multipole for unlensed fields
-    lmax_filt = 2000  # Maximum multipole for filtering
-    lmax_qlm = 500   # Maximum multipole for QE output
+    lmax_filt, lmax_qlm = 2048, 400  # Maximum multipoles for filtering and QE output
     geom_info = ('thingauss', {'lmax': 4000, 'smax': 2})  # Geometry specification
-    
+
     # Get CMB power spectra
     cls_unl, cls_len, _ = get_ffp10_cls(lmax=lmax_unl)
     geom = get_geom(geom_info)
-    
+
     # Define beam and noise properties
     beam = gauss_beam(5. / 180 / 60 * np.pi, lmax=lmax_filt)  # 5 arcmin beam
     inoise = {
@@ -47,36 +46,52 @@ Here's a basic example of how to use the quadratic estimator functionality:
         'bb': beam ** 2 / (55. / 180 / 60 * np.pi) ** 2   # 55 μK-arcmin for polarization
     }
     transfs = {f: np.ones(lmax_filt + 1, dtype=float) for f in 'teb'}  # Transfer functions
-    
+
     # Generate lensed CMB maps
     maps, (unl_alms, unl_lab) = synfast(cls_unl, lmax=lmax_unl, geometry=geom_info, alm=True)
-    
+
     # Convert maps to harmonic space
     tlm = geom.adjoint_synthesis(maps['T'], 0, lmax_filt, lmax_filt, 0).squeeze()
     eblm = geom.adjoint_synthesis(maps['QU'], 2, lmax_filt, lmax_filt, 0)
-    
+
     # Apply transfer functions
     almxfl(tlm, transfs['t'], lmax_filt, True)
     almxfl(eblm[0], transfs['e'], lmax_filt, True)
     almxfl(eblm[1], transfs['b'], lmax_filt, True)
-    
+
+    # Add instrumental noise
+    tlm += synalm(1. / inoise['tt'], lmax_filt, lmax_filt)
+    eblm[0] += synalm(1. / inoise['ee'], lmax_filt, lmax_filt)
+    eblm[1] += synalm(1. / inoise['bb'], lmax_filt, lmax_filt)
+
     # Prepare alms dictionary
     alms = {'t': tlm, 'e': eblm[0], 'b': eblm[1]}
-    
+
     # Create inverse-variance filtering object
     filtr = OpFilt(cls_len, transfs, inoise)
-    
+
     # Create QE calculator object
     qlms_dd = Qlms(filtr, filtr, cls_len, lmax_qlm)
-    
+
     # Calculate QE (gradient and curl components)
     plm, olm = qlms_dd.get_qlms('ptt', alms, verbose=True)
-    
+
     # Calculate response
     rp, ro = qlms_dd.get_response('ptt', 'p', cls_len)
-    
+
     # Apply normalization
     almxfl(plm, 1.0 / rp, lmax_qlm, True)
+
+    # Calculate correlation with input lensing potential
+    ls = np.arange(2, lmax_qlm + 1)
+    wls = ls ** 2 * (ls + 1) ** 2 * 1e7 / (2 * np.pi)
+
+    # Get input lensing potential for comparison
+    plm_in = alm_copy(unl_alms[unl_lab.index('p')], lmax_unl, lmax_qlm, lmax_qlm)
+
+    # Calculate cross-correlation and auto-spectrum
+    cross = wls / rp[ls] * alm2cl(plm, plm_in, lmax_qlm, lmax_qlm, lmax_qlm)[ls]
+    auto = wls / rp[ls] ** 2 * alm2cl(plm, plm, lmax_qlm, lmax_qlm, lmax_qlm)[ls]
 
 Estimator Types
 --------------
@@ -98,7 +113,7 @@ The ``OpFilt`` class in ``lenspyx.qest.ivfs`` implements inverse-variance filter
 .. code-block:: python
 
     from lenspyx.qest.ivfs import OpFilt
-    
+
     # Create inverse-variance filter
     filtr = OpFilt(cls_cmb, transfs, noise)
 
@@ -139,7 +154,7 @@ The noise bias in the power spectrum of the reconstructed lensing potential can 
 .. code-block:: python
 
     from lenspyx.qest.nhl import nhl
-    
+
     # Calculate N0 bias
     n0 = nhl(filtr, filtr, 'ptt', 'ptt', cls_cmb, lmax_qlm)
 
@@ -148,7 +163,7 @@ The N0 bias is the disconnected (Gaussian) contribution to the power spectrum of
 Advanced Usage
 ------------
 
-For more advanced usage, including custom filtering schemes and noise bias subtraction, please refer to the example scripts in the ``lenspyx/tests/qes`` directory.
+For more advanced usage, including custom filtering schemes and noise bias subtraction, please refer to the example script ``lenspyx/tests/qes/qest.py``, which demonstrates the quadratic estimator functionality in a Planck-like setting.
 
 API Reference
 -----------
