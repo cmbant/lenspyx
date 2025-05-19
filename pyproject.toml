@@ -48,6 +48,11 @@ version = {attr = "lenspyx._version.__version__"}
 [tool.setuptools.package-data]
 lenspyx = ["data/cls/*.dat"]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["lenspyx/tests"]
 python_files = "test_*.py"
