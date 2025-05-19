@@ -1,1 +1,4 @@
 ducc0>=0.30.0
+numpy
+matplotlib
+healpy
